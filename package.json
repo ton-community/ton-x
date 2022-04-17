@@ -1,0 +1,18 @@
+{
+  "name": "ton-x",
+  "version": "0.0.1",
+  "repository": "https://github.com/ton-foundation/ton-x.git",
+  "author": "Steve Korshakov <steve@korshakov.com>",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rm -fr dist && tsc --declaration",
+    "release": "yarn build && yarn publish"
+  },
+  "devDependencies": {
+    "typescript": "^4.6.3"
+  }
+}
