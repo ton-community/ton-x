@@ -256,7 +256,7 @@ export class TonhubConnector {
                 testnet = args.testnet;
             }
             if (args.adapter) {
-                this.adapter = args.adapter;
+                adapter = args.adapter;
             }
         }
         this.testnet = testnet;
