@@ -5,6 +5,10 @@ Connector for dApps for TON blockchain
 Supported connectors:
 * [Tonhub](https://tonhub.com) and [Tondev](https://test.tonhub.com)
 
+```
+yarn install ton-x
+```
+
 ## Tonhub connector
 
 Connecting app to a wallet:
