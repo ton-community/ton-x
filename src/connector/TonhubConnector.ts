@@ -147,6 +147,25 @@ function idFromSeed(seed: string) {
     return toUrlSafe(keyPair.publicKey.toString('base64'));
 }
 
+function textToCell(src: string) {
+    let bytes = Buffer.from(src);
+    let res = new Cell();
+    let dest = res;
+    while (bytes.length > 0) {
+        let avaliable = Math.floor(dest.bits.available / 8);
+        if (bytes.length <= avaliable) {
+            dest.bits.writeBuffer(bytes);
+            break;
+        }
+        dest.bits.writeBuffer(bytes.slice(0, avaliable));
+        bytes = bytes.slice(avaliable, bytes.length);
+        let nc = new Cell();
+        dest.refs.push(nc);
+        dest = nc;
+    }
+    return res;
+}
+
 export class TonhubConnector {
 
     static extractPublicKey(config: {
@@ -398,8 +417,6 @@ export class TonhubConnector {
 
         // Prepare cell
         let expires = Math.floor((Date.now() + request.timeout) / 1000);
-        let commentCell = new Cell();
-        new CommentMessage(comment).writeTo(commentCell);
         const job = beginCell()
             .storeBuffer(Buffer.from(session.wallet.appPublicKey, 'base64'))
             .storeUint(expires, 32)
@@ -407,7 +424,7 @@ export class TonhubConnector {
             .storeRef(beginCell()
                 .storeAddress(address)
                 .storeCoins(value)
-                .storeRef(commentCell)
+                .storeRef(textToCell(comment))
                 .storeRefMaybe(data ? data : null)
                 .storeRefMaybe(stateInit ? stateInit : null)
                 .endCell())
