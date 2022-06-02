@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosRequestConfig } from "axios";
 import { getSecureRandomBytes, keyPairFromSeed } from "ton-crypto";
 import { backoff } from "../utils/backoff";
 import { toUrlSafe } from "../utils/toURLsafe";
@@ -310,57 +310,73 @@ export class TonhubConnector {
         };
     }
 
+    private ensureSessionStateCorrect = (sessionId: string, ex: any): TonhubSessionState => {
+        if (!sessionStateCodec.is(ex)) {
+            throw Error('Invalid response from server');
+        }
+        if (ex.state === 'initing') {
+            if (ex.testnet !== this.testnet) {
+                return { state: 'revoked' };
+            }
+            return {
+                state: 'initing',
+                name: ex.name,
+                url: ex.url,
+                created: ex.created,
+                updated: ex.updated
+            };
+        }
+        if (ex.state === 'ready') {
+            if (ex.revoked) {
+                return { state: 'revoked' };
+            }
+            if (ex.testnet !== this.testnet) {
+                return { state: 'revoked' };
+            }
+            if (!TonhubConnector.verifyWalletConfig(sessionId, ex.wallet)) {
+                throw Error('Integrity check failed');
+            }
+
+            return {
+                state: 'ready',
+                name: ex.name,
+                url: ex.url,
+                created: ex.created,
+                updated: ex.updated,
+                wallet: {
+                    address: ex.wallet.address,
+                    endpoint: ex.wallet.endpoint,
+                    walletType: ex.wallet.walletType,
+                    walletConfig: ex.wallet.walletConfig,
+                    walletSig: ex.wallet.walletSig,
+                    appPublicKey: ex.wallet.appPublicKey
+                }
+            };
+        }
+
+        return { state: 'revoked' };
+    }
+
     getSessionState = async (sessionId: string): Promise<TonhubSessionState> => {
         return await backoff(async () => {
             let ex = (await axios.get('https://connect.tonhubapi.com/connect/' + sessionId, this.adapter ? { timeout: 5000, adapter: this.adapter } : { timeout: 5000 })).data;
-            if (!sessionStateCodec.is(ex)) {
-                throw Error('Invalid response from server');
-            }
-            if (ex.state === 'initing') {
-                if (ex.testnet !== this.testnet) {
-                    return { state: 'revoked' };
-                }
-                return {
-                    state: 'initing',
-                    name: ex.name,
-                    url: ex.url,
-                    created: ex.created,
-                    updated: ex.updated
-                };
-            }
-            if (ex.state === 'ready') {
-                if (ex.revoked) {
-                    return { state: 'revoked' };
-                }
-                if (ex.testnet !== this.testnet) {
-                    return { state: 'revoked' };
-                }
-                if (!TonhubConnector.verifyWalletConfig(sessionId, ex.wallet)) {
-                    throw Error('Integrity check failed');
-                }
-
-                return {
-                    state: 'ready',
-                    name: ex.name,
-                    url: ex.url,
-                    created: ex.created,
-                    updated: ex.updated,
-                    wallet: {
-                        address: ex.wallet.address,
-                        endpoint: ex.wallet.endpoint,
-                        walletType: ex.wallet.walletType,
-                        walletConfig: ex.wallet.walletConfig,
-                        walletSig: ex.wallet.walletSig,
-                        appPublicKey: ex.wallet.appPublicKey
-                    }
-                };
-            }
-
-            return { state: 'revoked' };
+            return this.ensureSessionStateCorrect(sessionId, ex);
         });
     }
 
-    awaitSessionReady = async (sessionId: string, timeout: number): Promise<TonhubSessionAwaited> => {
+    waitForSessionState = async (sessionId: string, lastUpdated?: number): Promise<TonhubSessionState> => {
+        return await backoff(async () => {
+            let params: AxiosRequestConfig = this.adapter ? { timeout: 30000, adapter: this.adapter } : { timeout: 30000 }
+            params.timeout = 30000
+            params.params = { 
+                lastUpdated
+            };
+            let ex = (await axios.get('https://connect.tonhubapi.com/connect/' + sessionId + '/wait', params)).data;
+            return this.ensureSessionStateCorrect(sessionId, ex);
+        })
+    }
+
+    awaitSessionReady = async (sessionId: string, timeout: number, lastUpdated: number): Promise<TonhubSessionAwaited> => {
         let expires = Date.now() + timeout;
         let res: TonhubSessionStateReady | TonhubSessionStateExpired | TonhubSessionStateRevoked = await backoff(async () => {
             while (Date.now() < expires) {
