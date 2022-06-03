@@ -422,7 +422,7 @@ export class TonhubConnector {
         // StateInit
         let stateInit: Cell | null = null;
         if (typeof request.stateInit === 'string') {
-            data = Cell.fromBoc(Buffer.from(request.stateInit, 'base64'))[0];
+            stateInit = Cell.fromBoc(Buffer.from(request.stateInit, 'base64'))[0];
         }
 
         // Comment
