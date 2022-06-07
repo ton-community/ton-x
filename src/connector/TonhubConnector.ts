@@ -8,7 +8,7 @@ import { Cell, Address, beginCell, CommentMessage, safeSign, contractAddress, sa
 import BN from 'bn.js';
 import { WalletV4Source } from 'ton-contracts';
 import { TonhubHttpTransport } from '../transport/TonhubHttpTransport';
-import { TonXTransport } from '../transport/TonXTransport';
+import { TonhubEmbeddedTransport } from '../transport/TonhubEmbeddedTransport';
 
 const sessionStateCodec = t.union([
     t.type({
@@ -169,8 +169,8 @@ function textToCell(src: string) {
 }
 
 function autodiscoverTransport(config?: { adapter: any }) {
-    if (TonXTransport.isAvailable()) {
-        return new TonXTransport();
+    if (TonhubEmbeddedTransport.isAvailable()) {
+        return new TonhubEmbeddedTransport();
     }
     return new TonhubHttpTransport({
         adapter: config?.adapter,
@@ -276,22 +276,23 @@ export class TonhubConnector {
         return signed;
     }
 
-    readonly testnet: boolean;
+    readonly network: 'mainnet' | 'sandbox';
     readonly transport: Transport;
     
 
-    constructor(args?: { testnet?: boolean, adapter?: any, transport?: Transport }) {
-        let testnet = false;
+    constructor(args?: { network?: 'mainnet' | 'sandbox', adapter?: any, transport?: Transport }) {
+        let network: 'mainnet' | 'sandbox' = 'mainnet';
         let adapter: any | null = null;
         if (args) {
-            if (typeof args.testnet === 'boolean') {
-                testnet = args.testnet;
+            if (args.network !== undefined) {
+                network = args.network;
             }
             if (args.adapter) {
                 adapter = args.adapter;
             }
         }
-        this.testnet = testnet;
+
+        this.network = network;
         this.transport = args?.transport || autodiscoverTransport({ adapter });
     }
 
@@ -306,7 +307,7 @@ export class TonhubConnector {
         await backoff(async () => {
             let session = await this.transport.call('session_new', {
                 key: sessionId,
-                testnet: this.testnet,
+                testnet: this.network === 'sandbox',
                 name: args.name,
                 url: args.url,
             });
@@ -321,7 +322,7 @@ export class TonhubConnector {
         return {
             id: sessionId,
             seed: seed.toString('base64'),
-            link: (this.testnet ? 'ton-test://connect/' : 'ton://connect/') + sessionId + '?endpoint=connect.tonhubapi.com'
+            link: (this.network === 'sandbox' ? 'ton-test://connect/' : 'ton://connect/') + sessionId + '?endpoint=connect.tonhubapi.com'
         };
     }
 
@@ -330,7 +331,7 @@ export class TonhubConnector {
             throw Error('Invalid response from server');
         }
         if (ex.state === 'initing') {
-            if (ex.testnet !== this.testnet) {
+            if (ex.testnet !== (this.network === 'sandbox')) {
                 return { state: 'revoked' };
             }
             return {
@@ -345,7 +346,7 @@ export class TonhubConnector {
             if (ex.revoked) {
                 return { state: 'revoked' };
             }
-            if (ex.testnet !== this.testnet) {
+            if (ex.testnet !== (this.network === 'sandbox')) {
                 return { state: 'revoked' };
             }
             if (!TonhubConnector.verifyWalletConfig(sessionId, ex.wallet)) {
@@ -384,17 +385,18 @@ export class TonhubConnector {
     waitForSessionState = async (sessionId: string, lastUpdated?: number): Promise<TonhubSessionState> => {
         return await backoff(async () => {
             let session = this.transport.call('session_wait', {
-                id: sessionId
+                id: sessionId,
+                lastUpdated
             });
             return this.ensureSessionStateCorrect(sessionId, session);
         })
     }
 
-    awaitSessionReady = async (sessionId: string, timeout: number): Promise<TonhubSessionAwaited> => {
+    awaitSessionReady = async (sessionId: string, timeout: number, lastUpdated?: number): Promise<TonhubSessionAwaited> => {
         let expires = Date.now() + timeout;
         let res: TonhubSessionStateReady | TonhubSessionStateExpired | TonhubSessionStateRevoked = await backoff(async () => {
             while (Date.now() < expires) {
-                let existing = await this.getSessionState(sessionId);
+                let existing = await this.waitForSessionState(sessionId, lastUpdated);
                 if (existing.state !== 'initing') {
                     if (existing.state === 'ready') {
                         return existing;
@@ -584,7 +586,7 @@ export class TonhubConnector {
         let appk = toUrlSafe(appPublicKey);
 
         let res = await this.transport.call('command_get', { appk });
-        
+
         if (!jobStateCodec.is(res)) {
             throw Error('Invalid response from server');
         }

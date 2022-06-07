@@ -1,7 +1,7 @@
 
-export class TonXTransport implements Transport {
+export class TonhubEmbeddedTransport implements Transport {
     call<TResult, TArgs>(method: string, args: TArgs): Promise<TResult> {
-        let tonX = TonXTransport.getTonX();
+        let tonX = TonhubEmbeddedTransport.get();
         if (!tonX) {
             throw new Error('ton-x not found');
         }
@@ -9,7 +9,7 @@ export class TonXTransport implements Transport {
         return tonX.call(method, args);
     }
 
-    private static getTonX() {
+    private static get() {
         if (!window || !(window as any).tonX) {
             return null;
         }
@@ -20,6 +20,6 @@ export class TonXTransport implements Transport {
     }
 
     static isAvailable() {
-        return this.getTonX() !== null;
+        return this.get() !== null;
     }
 }
