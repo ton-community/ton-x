@@ -313,7 +313,7 @@ export class TonhubConnector {
             });
                 
             
-            if (!session.data.ok) {
+            if (!session.ok) {
                 throw Error('Unable to create state');
             }
         });
@@ -375,7 +375,7 @@ export class TonhubConnector {
 
     getSessionState = async (sessionId: string): Promise<TonhubSessionState> => {
         return await backoff(async () => {
-            let session = this.transport.call('session_get', {
+            let session = await this.transport.call('session_get', {
                 id: sessionId
             });
             return this.ensureSessionStateCorrect(sessionId, session);
@@ -384,7 +384,7 @@ export class TonhubConnector {
 
     waitForSessionState = async (sessionId: string, lastUpdated?: number): Promise<TonhubSessionState> => {
         return await backoff(async () => {
-            let session = this.transport.call('session_wait', {
+            let session = await this.transport.call('session_wait', {
                 id: sessionId,
                 lastUpdated
             });

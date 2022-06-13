@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { string } from 'fp-ts';
 
 export class TonhubHttpTransport implements Transport {
     private readonly _endpoint: string;
@@ -38,9 +39,6 @@ export class TonhubHttpTransport implements Transport {
             args,
             this.getAxiosConfig(),
         );
-        if (!session.data.ok) {
-            throw Error('Unable to create session: ' + JSON.stringify(session.data));
-        }
         return session.data;
     }
 
@@ -53,9 +51,6 @@ export class TonhubHttpTransport implements Transport {
             `${this._endpoint}/connect/` + args.id, 
             this.getAxiosConfig()
         );
-        if (!session.data.ok) {
-            throw Error('Unable to create session: ' + JSON.stringify(session.data));
-        }
         return session.data;
     }
 
@@ -66,22 +61,16 @@ export class TonhubHttpTransport implements Transport {
         
         let session = await axios.get(
             `${this._endpoint}/connect/` + args.id + '/wait?lastUpdated='+(args.lastUpdated || 0), 
-            this.getAxiosConfig()
+            { ...this.getAxiosConfig(), timeout: 30000 }
         );
-        if (!session.data.ok) {
-            throw Error('Unable to create session: ' + JSON.stringify(session.data));
-        }
         return session.data;
     }
 
     async createCommand(args: any) {
         let result = await axios.post(`${this._endpoint}/connect/command`, args, this.getAxiosConfig());
-        if (!result.data.ok) {
-            throw new Error('Cannot create command: ' + JSON.stringify(result.data));
-        }
         return result.data;
     }
-    async getCommand(appk: string) {
-        return (await axios.get(`${this._endpoint}/connect/command/` + appk, this.getAxiosConfig())).data;
+    async getCommand(args: { appk: string }) {
+        return (await axios.get(`${this._endpoint}/connect/command/` + args.appk, this.getAxiosConfig())).data;
     }
 }

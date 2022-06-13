@@ -10,7 +10,7 @@ export class TonhubEmbeddedTransport implements Transport {
     }
 
     private static get() {
-        if (!window || !(window as any).tonX) {
+        if (typeof window === 'undefined' || !(window as any)?.tonX) {
             return null;
         }
     
