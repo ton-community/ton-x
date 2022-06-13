@@ -168,12 +168,11 @@ function textToCell(src: string) {
     return res;
 }
 
-function autodiscoverTransport(config?: { adapter: any }) {
+export function autodiscoverTransport() {
     if (TonhubEmbeddedTransport.isAvailable()) {
         return new TonhubEmbeddedTransport();
     }
     return new TonhubHttpTransport({
-        adapter: config?.adapter,
         endpoint: 'https://connect.tonhubapi.com'
     });
 }
@@ -280,20 +279,16 @@ export class TonhubConnector {
     readonly transport: Transport;
     
 
-    constructor(args?: { network?: 'mainnet' | 'sandbox', adapter?: any, transport?: Transport }) {
+    constructor(args?: { network?: 'mainnet' | 'sandbox', transport?: Transport }) {
         let network: 'mainnet' | 'sandbox' = 'mainnet';
-        let adapter: any | null = null;
         if (args) {
             if (args.network !== undefined) {
                 network = args.network;
             }
-            if (args.adapter) {
-                adapter = args.adapter;
-            }
         }
 
         this.network = network;
-        this.transport = args?.transport || autodiscoverTransport({ adapter });
+        this.transport = args?.transport || autodiscoverTransport();
     }
 
     createNewSession = async (args: { name: string, url: string }): Promise<TonhubCreatedSession> => {
