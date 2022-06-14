@@ -66,7 +66,13 @@ export type TonhubWalletConfig = {
     walletType: string,
     walletConfig: string,
     walletSig: string,
-    appPublicKey: string
+    appPublicKey: string,
+    subkey?: {
+        publicKey: string,
+        domain: string,
+        time: number,
+        signature: string
+    }
 }
 
 export type TonhubCreatedSession = {
@@ -214,7 +220,23 @@ export class TonhubConnector {
             return false;
         }
 
-        let publicKey: Buffer = extracted.publicKey;
+        let walletPublicKey: Buffer = extracted.publicKey;
+
+        // check sub key if exists
+        if (config.subkey !== undefined) {
+            let toSign = beginCell()
+                .storeCoins(0)
+                .storeBuffer(Buffer.from(config.subkey.publicKey, 'base64'))
+                .storeAddress(address)
+                .storeBit(1)
+                .storeRef(beginCell().storeBuffer(Buffer.from(config.subkey.domain)).endCell())
+                .storeRef(beginCell().storeBuffer(Buffer.from(config.appPublicKey, 'base64')).endCell())
+                .endCell();
+
+            if (!safeSignVerify(toSign, Buffer.from(config.subkey.signature, 'base64'), walletPublicKey)) {
+                return false;
+            }
+        }
 
         // Check signature
         let toSign = beginCell()
@@ -232,8 +254,8 @@ export class TonhubConnector {
                 .endCell())
             .endCell();
 
-        // Sign
-        return safeSignVerify(toSign, Buffer.from(config.walletSig, 'base64'), publicKey);
+        // Sign using sub key if it exists, else using wallet key
+        return safeSignVerify(toSign, Buffer.from(config.walletSig, 'base64'), config.subkey ? Buffer.from(config.subkey.publicKey, 'base64') : walletPublicKey);
     }
 
     static verifySignatureResponse(args: {
