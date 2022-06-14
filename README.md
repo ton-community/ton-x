@@ -20,7 +20,7 @@ Connecting app to a wallet:
 
 ```typescript
 import { TonhubConnector } from 'ton-x';
-const connector = new TonhubConnector({ testnet: true });
+const connector = new TonhubConnector({ network: 'sandbox' });
 ```
 
 ### Creating session
@@ -40,7 +40,7 @@ const sessionLink = session.link;
 ### Await session confirmation
 
 ```typescript
-const session: TonhubSessionAwaited = await connector.awaitSessionReady(sessionId, 5 * 60 * 1000); // 5 min timeout
+const session: TonhubSessionAwaited = await connector.awaitSessionReady(sessionId, 5 * 60 * 1000, /* optional */ lastUpdated); // 5 min timeout
 
 if (session.state === 'revoked' || session.state === 'expired') {
     // Handle revoked or expired session
