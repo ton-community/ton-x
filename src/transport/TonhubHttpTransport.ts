@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { string } from 'fp-ts';
 
 export class TonhubHttpTransport implements Transport {
     private readonly _endpoint: string;

@@ -1,4 +1,3 @@
-import axios, { AxiosRequestConfig } from "axios";
 import { getSecureRandomBytes, keyPairFromSeed } from "ton-crypto";
 import { backoff } from "../utils/backoff";
 import { toUrlSafe } from "../utils/toURLsafe";
@@ -8,7 +7,6 @@ import { Cell, Address, beginCell, CommentMessage, safeSign, contractAddress, sa
 import BN from 'bn.js';
 import { WalletV4Source } from 'ton-contracts';
 import { TonhubHttpTransport } from '../transport/TonhubHttpTransport';
-import { TonhubEmbeddedTransport } from '../transport/TonhubEmbeddedTransport';
 
 const sessionStateCodec = t.union([
     t.type({
@@ -168,15 +166,6 @@ function textToCell(src: string) {
     return res;
 }
 
-export function autodiscoverTransport() {
-    if (TonhubEmbeddedTransport.isAvailable()) {
-        return new TonhubEmbeddedTransport();
-    }
-    return new TonhubHttpTransport({
-        endpoint: 'https://connect.tonhubapi.com'
-    });
-}
-
 export class TonhubConnector {
 
     static extractPublicKey(config: {
@@ -277,7 +266,7 @@ export class TonhubConnector {
 
     readonly network: 'mainnet' | 'sandbox';
     readonly transport: Transport;
-    
+
 
     constructor(args?: { network?: 'mainnet' | 'sandbox', transport?: Transport }) {
         let network: 'mainnet' | 'sandbox' = 'mainnet';
@@ -288,7 +277,7 @@ export class TonhubConnector {
         }
 
         this.network = network;
-        this.transport = args?.transport || autodiscoverTransport();
+        this.transport = args?.transport || new TonhubHttpTransport();
     }
 
     createNewSession = async (args: { name: string, url: string }): Promise<TonhubCreatedSession> => {
@@ -306,8 +295,8 @@ export class TonhubConnector {
                 name: args.name,
                 url: args.url,
             });
-                
-            
+
+
             if (!session.ok) {
                 throw Error('Unable to create state');
             }
@@ -589,7 +578,7 @@ export class TonhubConnector {
             return { type: 'expired' };
         }
         if (res.job !== boc) {
-            return { type: 'rejected' };        
+            return { type: 'rejected' };
         }
         if (res.state === 'expired') {
             return { type: 'expired' };

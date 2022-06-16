@@ -13,3 +13,10 @@ export {
     TonhubSignResponse,
     TonhubWalletConfig
 } from './connector/TonhubConnector';
+
+export {
+    TonhubLocalConnector,
+    TonhubLocalConfig,
+    TonhubLocalTransactionRequest,
+    TonhubLocalTransactionResponse
+} from './connector/TonhubLocalConnector';
