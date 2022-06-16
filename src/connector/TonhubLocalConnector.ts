@@ -2,7 +2,7 @@ import * as t from 'io-ts';
 
 const configCodec = t.type({
     version: t.literal(1),
-    platform: t.union([t.literal('iOS'), t.literal('Android')]),
+    platform: t.union([t.literal('ios'), t.literal('android')]),
     platformVersion: t.union([t.string, t.number]),
     network: t.union([t.literal('sandbox'), t.literal('mainnet')]),
     address: t.string,
