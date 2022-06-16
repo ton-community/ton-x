@@ -23,7 +23,6 @@
     "io-ts": "^2.2.16",
     "teslabot": "^1.5.0",
     "ton": "9.8.0",
-    "ton-contracts": "^3.0.0",
     "ton-crypto": "^3.0.0"
   }
 }

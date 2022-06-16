@@ -5,8 +5,8 @@ import * as t from 'io-ts';
 import { delay } from "teslabot";
 import { Cell, Address, beginCell, CommentMessage, safeSign, contractAddress, safeSignVerify } from 'ton';
 import BN from 'bn.js';
-import { WalletV4Source } from 'ton-contracts';
 import { TonhubHttpTransport } from '../transport/TonhubHttpTransport';
+import { WalletV4Source } from "../contracts/WalletV4Source";
 
 const sessionStateCodec = t.union([
     t.type({
