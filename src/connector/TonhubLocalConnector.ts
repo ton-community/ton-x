@@ -64,7 +64,7 @@ export class TonhubLocalConnector {
         if (tx.__IS_TON_X !== true) {
             return false;
         }
-        if (!configCodec.is(tx)) {
+        if (!configCodec.is(tx.config)) {
             return false;
         }
         return true;
