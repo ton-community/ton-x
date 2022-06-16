@@ -167,7 +167,7 @@ export class TonhubLocalConnector {
         let commentCell = new Cell();
         new CommentMessage(comment).writeTo(commentCell);
 
-        let res = await this.#doRequest('tx', {
+        let res = await this.#doRequest('sign', {
             network: this.network,
             textCell: commentCell.toBoc({ idx: false }).toString('base64'),
             payloadCell: data.toBoc({ idx: false }).toString('base64')
