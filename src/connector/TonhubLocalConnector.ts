@@ -73,7 +73,7 @@ export class TonhubLocalConnector {
     readonly network: 'mainnet' | 'sandbox';
     readonly config: TonhubLocalConfig;
 
-    #provider: (name: string, args: any) => Promise<any>
+    #provider: (name: string, args: any, callback: (res: any) => void) => void;
 
     constructor(network: 'mainnet' | 'sandbox') {
         if (typeof window === 'undefined') {
@@ -117,7 +117,7 @@ export class TonhubLocalConnector {
     }
 
     async requestTransaction(request: TonhubLocalTransactionRequest): Promise<TonhubLocalTransactionResponse> {
-        let res = await this.#provider('tx', {
+        let res = await this.#doRequest('tx', {
             network: this.network,
             to: request.to,
             value: request.value,
@@ -136,5 +136,9 @@ export class TonhubLocalConnector {
             throw Error('Unknown reponse');
         }
         throw Error(res.message);
+    }
+
+    async #doRequest(name: string, args: any) {
+        return await new Promise<any>((resolve) => this.#provider(name, args, resolve));
     }
 }
