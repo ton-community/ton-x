@@ -1,4 +1,5 @@
 import * as t from 'io-ts';
+import { Cell, CommentMessage } from 'ton';
 
 const configCodec = t.type({
     version: t.literal(1),
@@ -47,6 +48,18 @@ export type TonhubLocalTransactionRequest = {
 export type TonhubLocalTransactionResponse = {
     type: 'success',
     response: string
+} | {
+    type: 'rejected'
+};
+
+export type TonhubLocalSignRequest = {
+    text?: string | null | undefined,
+    payload?: string | null | undefined
+}
+
+export type TonhubLocalSignResponse = {
+    type: 'success',
+    signature: string
 } | {
     type: 'rejected'
 };
@@ -132,6 +145,40 @@ export class TonhubLocalConnector {
             }
             if (d.state === 'sent') {
                 return { type: 'success', response: d.result };
+            }
+            throw Error('Unknown reponse');
+        }
+        throw Error(res.message);
+    }
+
+    async requestSign(request: TonhubLocalSignRequest): Promise<TonhubLocalSignResponse> {
+
+        // Parse data
+        let data: Cell = new Cell();
+        if (typeof request.payload === 'string') {
+            data = Cell.fromBoc(Buffer.from(request.payload, 'base64'))[0];
+        }
+
+        // Comment
+        let comment: string = '';
+        if (typeof request.text === 'string') {
+            comment = request.text;
+        }
+        let commentCell = new Cell();
+        new CommentMessage(comment).writeTo(commentCell);
+
+        let res = await this.#doRequest('tx', {
+            network: this.network,
+            textCell: commentCell.toBoc({ idx: false }).toString('base64'),
+            payloadCell: data.toBoc({ idx: false }).toString('base64')
+        });
+        if (res.type === 'ok') {
+            let d = res.data;
+            if (d.state === 'rejected') {
+                return { type: 'rejected' };
+            }
+            if (d.state === 'sent') {
+                return { type: 'success', signature: d.result };
             }
             throw Error('Unknown reponse');
         }
