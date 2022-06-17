@@ -20,3 +20,11 @@ export {
     TonhubLocalTransactionRequest,
     TonhubLocalTransactionResponse
 } from './connector/TonhubLocalConnector';
+
+export {
+    verifySignatureResponse
+} from './connector/crypto';
+
+export {
+    extractPublicKeyAndAddress
+} from './contracts/extractPublicKeyAndAddress';

@@ -7,6 +7,8 @@ import { Cell, Address, beginCell, CommentMessage, safeSign, contractAddress, sa
 import BN from 'bn.js';
 import { TonhubHttpTransport } from '../transport/TonhubHttpTransport';
 import { WalletV4Source } from "../contracts/WalletV4Source";
+import { extractPublicKeyAndAddress } from "../contracts/extractPublicKeyAndAddress";
+import { verifySignatureResponse } from "./crypto";
 
 const sessionStateCodec = t.union([
     t.type({
@@ -168,32 +170,13 @@ function textToCell(src: string) {
 
 export class TonhubConnector {
 
-    static extractPublicKey(config: {
-        walletType: string,
-        walletConfig: string
-    }) {
-        // Extract public key and address
-        let publicKey: Buffer;
-        let restoredAddress: Address;
-        if (config.walletType === 'org.ton.wallets.v4') {
-            let source = WalletV4Source.restore(config.walletConfig);
-            restoredAddress = contractAddress(source);
-            publicKey = source.publicKey;
-        } else {
-            return null;
-        }
-
-        // Public key
-        return { publicKey, address: restoredAddress };
-    }
-
     static verifyWalletConfig(session: string, config: TonhubWalletConfig) {
 
         // Check address
         const address = Address.parseFriendly(config.address).address;
 
         // Extract public key and address
-        let extracted = TonhubConnector.extractPublicKey(config);
+        let extracted = extractPublicKeyAndAddress(config);
         if (!extracted) {
             return false;
         }
@@ -223,45 +206,6 @@ export class TonhubConnector {
 
         // Sign
         return safeSignVerify(toSign, Buffer.from(config.walletSig, 'base64'), publicKey);
-    }
-
-    static verifySignatureResponse(args: {
-        signature: string,
-        text?: string | null | undefined,
-        payload?: string | null | undefined,
-        config: TonhubWalletConfig
-    }) {
-        // Check address
-        const address = Address.parseFriendly(args.config.address).address;
-
-        // Extract public key and address
-        let extracted = TonhubConnector.extractPublicKey(args.config);
-        if (!extracted) {
-            return false;
-        }
-
-        // Check address
-        if (!extracted.address.equals(address)) {
-            return false;
-        }
-
-        let publicKey: Buffer = extracted.publicKey;
-
-        // Package
-        const textCell = new Cell();
-        const payloadCell = new Cell();
-        if (typeof args.text === 'string') {
-            new CommentMessage(args.text).writeTo(textCell);
-        }
-
-        // Check signature
-        const data = beginCell()
-            .storeRef(textCell)
-            .storeRef(payloadCell)
-            .endCell();
-        const signed = safeSignVerify(data, Buffer.from(args.signature, 'base64'), publicKey);
-
-        return signed;
     }
 
     readonly network: 'mainnet' | 'sandbox';
@@ -536,7 +480,7 @@ export class TonhubConnector {
             const cellRes = Cell.fromBoc(Buffer.from(result.result, 'base64'))[0];
             let slice = cellRes.beginParse();
             const resSignature = slice.readBuffer(64);
-            let correct = TonhubConnector.verifySignatureResponse({ signature: resSignature.toString('base64'), config: session.wallet });
+            let correct = verifySignatureResponse({ signature: resSignature.toString('base64'), config: session.wallet });
             if (correct) {
                 return { type: 'success', signature: resSignature.toString('base64') };
             } else {
