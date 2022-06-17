@@ -1,5 +1,6 @@
 import * as t from 'io-ts';
-import { Cell, CommentMessage } from 'ton';
+import { Address, beginCell, Cell, CommentMessage, safeSignVerify } from 'ton';
+import { extractPublicKeyAndAddress } from '../contracts/extractPublicKeyAndAddress';
 
 const configCodec = t.type({
     version: t.literal(1),
@@ -65,6 +66,62 @@ export type TonhubLocalSignResponse = {
 };
 
 export class TonhubLocalConnector {
+
+    static verifyWalletConfig(config: {
+        address: string,
+        walletConfig: string,
+        walletType: string,
+        time: number,
+        signature: string,
+        subkey: {
+            domain: string,
+            publicKey: string,
+            time: number,
+            signature: string
+        }
+    }) {
+
+        // Check address
+        const address = Address.parseFriendly(config.address).address;
+
+        // Extract public key and address
+        let extracted = extractPublicKeyAndAddress(config);
+        if (!extracted) {
+            return false;
+        }
+
+        // Check address
+        if (!extracted.address.equals(address)) {
+            return false;
+        }
+
+        // Verify subkey
+        const toSignSub = beginCell()
+            .storeCoins(1)
+            .storeBuffer(Buffer.from(config.subkey.publicKey, 'base64'))
+            .storeUint(config.subkey.time, 32)
+            .storeAddress(extracted.address)
+            .storeRefMaybe(beginCell()
+                .storeBuffer(Buffer.from(config.subkey.domain))
+                .endCell())
+            .endCell();
+        if (!safeSignVerify(toSignSub, Buffer.from(config.subkey.signature, 'base64'), extracted.publicKey)) {
+            return false;
+        }
+
+        // Verify wallet
+        const toSign = beginCell()
+            .storeCoins(1)
+            .storeAddress(extracted.address)
+            .storeUint(config.time, 32)
+            .storeRefMaybe(beginCell()
+                .storeBuffer(Buffer.from(config.subkey.domain))
+                .endCell())
+            .endCell();
+
+        // Check signature
+        return safeSignVerify(toSign, Buffer.from(config.signature, 'base64'), Buffer.from(config.subkey.publicKey, 'base64'));
+    }
 
     static isAvailable() {
         if (typeof window === 'undefined') {
