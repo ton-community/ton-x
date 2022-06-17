@@ -101,7 +101,7 @@ export class TonhubLocalConnector {
             .storeBuffer(Buffer.from(config.subkey.publicKey, 'base64'))
             .storeUint(config.subkey.time, 32)
             .storeAddress(extracted.address)
-            .storeRefMaybe(beginCell()
+            .storeRef(beginCell()
                 .storeBuffer(Buffer.from(config.subkey.domain))
                 .endCell())
             .endCell();
@@ -114,7 +114,7 @@ export class TonhubLocalConnector {
             .storeCoins(1)
             .storeAddress(extracted.address)
             .storeUint(config.time, 32)
-            .storeRefMaybe(beginCell()
+            .storeRef(beginCell()
                 .storeBuffer(Buffer.from(config.subkey.domain))
                 .endCell())
             .endCell();
