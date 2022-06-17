@@ -3,10 +3,9 @@ import { backoff } from "../utils/backoff";
 import { toUrlSafe } from "../utils/toURLsafe";
 import * as t from 'io-ts';
 import { delay } from "teslabot";
-import { Cell, Address, beginCell, CommentMessage, safeSign, contractAddress, safeSignVerify } from 'ton';
+import { Cell, Address, beginCell, CommentMessage, safeSign, safeSignVerify } from 'ton';
 import BN from 'bn.js';
 import { TonhubHttpTransport } from '../transport/TonhubHttpTransport';
-import { WalletV4Source } from "../contracts/WalletV4Source";
 import { extractPublicKeyAndAddress } from "../contracts/extractPublicKeyAndAddress";
 import { verifySignatureResponse } from "./crypto";
 
