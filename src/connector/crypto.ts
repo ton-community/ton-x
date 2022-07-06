@@ -24,10 +24,13 @@ export function verifySignatureResponse(args: {
     let publicKey: Buffer = extracted.publicKey;
 
     // Package
-    const textCell = new Cell();
-    const payloadCell = new Cell();
+    let textCell = new Cell();
+    let payloadCell = new Cell();
     if (typeof args.text === 'string') {
         new CommentMessage(args.text).writeTo(textCell);
+    }
+    if (typeof args.payload === 'string') {
+        payloadCell = Cell.fromBoc(Buffer.from(args.payload, 'base64'))[0];
     }
 
     // Check signature

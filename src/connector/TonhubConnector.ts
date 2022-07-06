@@ -479,7 +479,13 @@ export class TonhubConnector {
             const cellRes = Cell.fromBoc(Buffer.from(result.result, 'base64'))[0];
             let slice = cellRes.beginParse();
             const resSignature = slice.readBuffer(64);
-            let correct = verifySignatureResponse({ signature: resSignature.toString('base64'), config: session.wallet });
+            let correct = verifySignatureResponse({ 
+                signature: resSignature.toString('base64'), 
+                config: session.wallet,
+                payload: request.payload,
+                text: request.text,
+            });
+            
             if (correct) {
                 return { type: 'success', signature: resSignature.toString('base64') };
             } else {
