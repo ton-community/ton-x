@@ -1,6 +1,6 @@
 {
   "name": "ton-x",
-  "version": "2.0.0-beta9",
+  "version": "2.0.0",
   "repository": "https://github.com/ton-foundation/ton-x.git",
   "author": "Steve Korshakov <steve@korshakov.com>",
   "license": "MIT",
