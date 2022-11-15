@@ -6,7 +6,7 @@ const configCodec = t.type({
     version: t.literal(1),
     platform: t.union([t.literal('ios'), t.literal('android')]),
     platformVersion: t.union([t.string, t.number]),
-    network: t.union([t.literal('sandbox'), t.literal('mainnet')]),
+    network: t.union([t.literal('testnet'), t.literal('mainnet')]),
     address: t.string,
     publicKey: t.string,
     walletConfig: t.string,
@@ -23,7 +23,7 @@ const configCodec = t.type({
 
 export type TonhubLocalConfig = {
     version: number,
-    network: 'sandbox' | 'mainnet',
+    network: 'testnet' | 'mainnet',
     address: string,
     publicKey: string,
     walletConfig: string,
@@ -140,12 +140,12 @@ export class TonhubLocalConnector {
         return true;
     }
 
-    readonly network: 'mainnet' | 'sandbox';
+    readonly network: 'mainnet' | 'testnet';
     readonly config: TonhubLocalConfig;
 
     #provider: (name: string, args: any, callback: (res: any) => void) => void;
 
-    constructor(network: 'mainnet' | 'sandbox') {
+    constructor(network: 'mainnet' | 'testnet') {
         if (typeof window === 'undefined') {
             throw Error('Not running in browser');
         }

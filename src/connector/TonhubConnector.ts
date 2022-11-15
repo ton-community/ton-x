@@ -207,12 +207,12 @@ export class TonhubConnector {
         return safeSignVerify(toSign, Buffer.from(config.walletSig, 'base64'), publicKey);
     }
 
-    readonly network: 'mainnet' | 'sandbox';
+    readonly network: 'mainnet' | 'testnet';
     readonly transport: Transport;
 
 
-    constructor(args?: { network?: 'mainnet' | 'sandbox', transport?: Transport }) {
-        let network: 'mainnet' | 'sandbox' = 'mainnet';
+    constructor(args?: { network?: 'mainnet' | 'testnet', transport?: Transport }) {
+        let network: 'mainnet' | 'testnet' = 'mainnet';
         if (args) {
             if (args.network !== undefined) {
                 network = args.network;
@@ -234,7 +234,7 @@ export class TonhubConnector {
         await backoff(async () => {
             let session = await this.transport.call('session_new', {
                 key: sessionId,
-                testnet: this.network === 'sandbox',
+                testnet: this.network === 'testnet',
                 name: args.name,
                 url: args.url,
             });
@@ -249,7 +249,7 @@ export class TonhubConnector {
         return {
             id: sessionId,
             seed: seed.toString('base64'),
-            link: (this.network === 'sandbox' ? 'ton-test://connect/' : 'ton://connect/') + sessionId + '?endpoint=connect.tonhubapi.com'
+            link: (this.network === 'testnet' ? 'ton-test://connect/' : 'ton://connect/') + sessionId + '?endpoint=connect.tonhubapi.com'
         };
     }
 
@@ -258,7 +258,7 @@ export class TonhubConnector {
             throw Error('Invalid response from server');
         }
         if (ex.state === 'initing') {
-            if (ex.testnet !== (this.network === 'sandbox')) {
+            if (ex.testnet !== (this.network === 'testnet')) {
                 return { state: 'revoked' };
             }
             return {
@@ -273,7 +273,7 @@ export class TonhubConnector {
             if (ex.revoked) {
                 return { state: 'revoked' };
             }
-            if (ex.testnet !== (this.network === 'sandbox')) {
+            if (ex.testnet !== (this.network === 'testnet')) {
                 return { state: 'revoked' };
             }
             if (!TonhubConnector.verifyWalletConfig(sessionId, ex.wallet)) {
