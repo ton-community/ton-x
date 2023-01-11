@@ -24,5 +24,6 @@
     "teslabot": "^1.5.0",
     "ton": "9.8.0",
     "ton-crypto": "^3.0.0"
-  }
+  },
+  "packageManager": "yarn@3.3.1"
 }

@@ -8,6 +8,7 @@ import BN from 'bn.js';
 import { TonhubHttpTransport } from '../transport/TonhubHttpTransport';
 import { extractPublicKeyAndAddress } from "../contracts/extractPublicKeyAndAddress";
 import { verifySignatureResponse } from "./crypto";
+import { Transport } from '../transport/Transport';
 
 const sessionStateCodec = t.union([
     t.type({
