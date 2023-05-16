@@ -1,64 +1,58 @@
 import { getSecureRandomBytes, keyPairFromSeed } from "ton-crypto";
-import { backoff } from "../utils/backoff";
+import { backoff, delay } from "../utils/time";
 import { toUrlSafe } from "../utils/toURLsafe";
-import * as t from 'io-ts';
-import { delay } from "teslabot";
-import { Cell, Address, beginCell, CommentMessage, safeSign, safeSignVerify } from 'ton';
-import BN from 'bn.js';
+import { Cell, Address, beginCell, comment, safeSign, safeSignVerify } from 'ton-core';
 import { TonhubHttpTransport } from '../transport/TonhubHttpTransport';
 import { extractPublicKeyAndAddress } from "../contracts/extractPublicKeyAndAddress";
 import { verifySignatureResponse } from "./crypto";
 import { Transport } from '../transport/Transport';
 
-const sessionStateCodec = t.union([
-    t.type({
-        state: t.literal('not_found')
-    }),
-    t.type({
-        state: t.literal('initing'),
-        name: t.string,
-        url: t.string,
-        testnet: t.boolean,
-        created: t.number,
-        updated: t.number,
-        revoked: t.boolean
-    }),
-    t.type({
-        state: t.literal('ready'),
-        name: t.string,
-        url: t.string,
-        wallet: t.type({
-            address: t.string,
-            endpoint: t.string,
-            walletConfig: t.string,
-            walletType: t.string,
-            walletSig: t.string,
-            appPublicKey: t.string
-        }),
-        testnet: t.boolean,
-        created: t.number,
-        updated: t.number,
-        revoked: t.boolean
-    })
-]);
+type SessionState = {
+    state: 'not_found'
+} |
+{
+    state: 'initing',
+    name: string,
+    url: string,
+    testnet: boolean,
+    created: number,
+    updated: number,
+    revoked: boolean
+} | {
+    state: 'ready',
+    name: string,
+    url: string,
+    wallet: {
+        address: string,
+        endpoint: string,
+        walletConfig: string,
+        walletType: string,
+        walletSig: string,
+        appPublicKey: string
+    },
+    testnet: boolean,
+    created: number,
+    updated: number,
+    revoked: boolean
+}
 
-const jobStateCodec = t.union([t.type({
-    state: t.union([t.literal('submitted'), t.literal('expired'), t.literal('rejected')]),
-    job: t.string,
-    created: t.number,
-    updated: t.number,
-    now: t.number
-}), t.type({
-    state: t.literal('completed'),
-    job: t.string,
-    created: t.number,
-    updated: t.number,
-    result: t.string,
-    now: t.number
-}), t.type({
-    state: t.literal('empty'),
-    now: t.number
-})]);
+type JobState = {
+    state: 'submitted' | 'expired' | 'rejected',
+    job: string,
+    created: number,
+    updated: number,
+    now: number
+} | {
+    state: 'completed',
+    job: string,
+    created: number,
+    updated: number,
+    result: string,
+    now: number
+} | {
+    state: 'empty',
+    now: number
+}
 
 export type TonhubWalletConfig = {
     address: string,
@@ -149,25 +143,6 @@ function idFromSeed(seed: string) {
     return toUrlSafe(keyPair.publicKey.toString('base64'));
 }
 
-function textToCell(src: string) {
-    let bytes = Buffer.from(src);
-    let res = new Cell();
-    let dest = res;
-    while (bytes.length > 0) {
-        let avaliable = Math.floor(dest.bits.available / 8);
-        if (bytes.length <= avaliable) {
-            dest.bits.writeBuffer(bytes);
-            break;
-        }
-        dest.bits.writeBuffer(bytes.slice(0, avaliable));
-        bytes = bytes.slice(avaliable, bytes.length);
-        let nc = new Cell();
-        dest.refs.push(nc);
-        dest = nc;
-    }
-    return res;
-}
-
 export class TonhubConnector {
 
     static verifyWalletConfig(session: string, config: TonhubWalletConfig) {
@@ -254,10 +229,7 @@ export class TonhubConnector {
         };
     }
 
-    private ensureSessionStateCorrect = (sessionId: string, ex: any): TonhubSessionState => {
-        if (!sessionStateCodec.is(ex)) {
-            throw Error('Invalid response from server');
-        }
+    private ensureSessionStateCorrect = (sessionId: string, ex: SessionState): TonhubSessionState => {
         if (ex.state === 'initing') {
             if (ex.testnet !== (this.network === 'testnet')) {
                 return { state: 'revoked' };
@@ -355,7 +327,7 @@ export class TonhubConnector {
         let address = Address.parseFriendly(request.to).address;
 
         // Value
-        let value = new BN(request.value, 10);
+        let value = BigInt(request.value);
 
         // Parse data
         let data: Cell | null = null;
@@ -370,9 +342,9 @@ export class TonhubConnector {
         }
 
         // Comment
-        let comment: string = '';
+        let commentMsg: string = '';
         if (typeof request.text === 'string') {
-            comment = request.text;
+            commentMsg = request.text;
         }
 
         // Prepare cell
@@ -384,9 +356,9 @@ export class TonhubConnector {
             .storeRef(beginCell()
                 .storeAddress(address)
                 .storeCoins(value)
-                .storeRef(textToCell(comment))
-                .storeRefMaybe(data ? data : null)
-                .storeRefMaybe(stateInit ? stateInit : null)
+                .storeStringRefTail(commentMsg)
+                .storeMaybeRef(data ? data : null)
+                .storeMaybeRef(stateInit ? stateInit : null)
                 .endCell())
             .endCell()
 
@@ -437,15 +409,14 @@ export class TonhubConnector {
         }
 
         // Comment
-        let comment: string = '';
+        let commentMsg: string = '';
         if (typeof request.text === 'string') {
-            comment = request.text;
+            commentMsg = request.text;
         }
 
         // Prepare cell
         let expires = Math.floor((Date.now() + request.timeout) / 1000);
-        let commentCell = new Cell();
-        new CommentMessage(comment).writeTo(commentCell);
+        let commentCell = comment(commentMsg);
         const job = beginCell()
             .storeBuffer(Buffer.from(session.wallet.appPublicKey, 'base64'))
             .storeUint(expires, 32)
@@ -479,14 +450,14 @@ export class TonhubConnector {
         if (result.type === 'completed') {
             const cellRes = Cell.fromBoc(Buffer.from(result.result, 'base64'))[0];
             let slice = cellRes.beginParse();
-            const resSignature = slice.readBuffer(64);
-            let correct = verifySignatureResponse({ 
-                signature: resSignature.toString('base64'), 
+            const resSignature = slice.loadBuffer(64);
+            let correct = verifySignatureResponse({
+                signature: resSignature.toString('base64'),
                 config: session.wallet,
                 payload: request.payload,
                 text: request.text,
             });
-            
+
             if (correct) {
                 return { type: 'success', signature: resSignature.toString('base64') };
             } else {
@@ -519,11 +490,8 @@ export class TonhubConnector {
     private _getJobState = async (appPublicKey: string, boc: string): Promise<{ type: 'expired' | 'rejected' | 'submitted' } | { type: 'completed', result: string }> => {
         let appk = toUrlSafe(appPublicKey);
 
-        let res = await this.transport.call('command_get', { appk });
+        let res = await this.transport.call('command_get', { appk }) as JobState;
 
-        if (!jobStateCodec.is(res)) {
-            throw Error('Invalid response from server');
-        }
         if (res.state === 'empty') {
             return { type: 'expired' };
         }

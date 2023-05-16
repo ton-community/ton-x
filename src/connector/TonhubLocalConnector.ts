@@ -1,25 +1,5 @@
-import * as t from 'io-ts';
-import { Address, beginCell, Cell, CommentMessage, safeSignVerify } from 'ton';
+import { Address, beginCell, Cell, comment, safeSignVerify } from 'ton-core';
 import { extractPublicKeyAndAddress } from '../contracts/extractPublicKeyAndAddress';
-
-const configCodec = t.type({
-    version: t.literal(1),
-    platform: t.union([t.literal('ios'), t.literal('android')]),
-    platformVersion: t.union([t.string, t.number]),
-    network: t.union([t.literal('testnet'), t.literal('mainnet')]),
-    address: t.string,
-    publicKey: t.string,
-    walletConfig: t.string,
-    walletType: t.string,
-    signature: t.string,
-    time: t.number,
-    subkey: t.type({
-        domain: t.string,
-        publicKey: t.string,
-        time: t.number,
-        signature: t.string
-    })
-});
 
 export type TonhubLocalConfig = {
     version: number,
@@ -134,9 +114,6 @@ export class TonhubLocalConnector {
         if (tx.__IS_TON_X !== true) {
             return false;
         }
-        if (!configCodec.is(tx.config)) {
-            return false;
-        }
         return true;
     }
 
@@ -157,9 +134,6 @@ export class TonhubLocalConnector {
             throw Error('Not running in dApp browser');
         }
         let cfg = tx.config;
-        if (!configCodec.is(cfg)) {
-            throw Error('Not running in dApp browser');
-        }
         if (cfg.network !== network) {
             throw Error('Invalid network');
         }
@@ -217,12 +191,11 @@ export class TonhubLocalConnector {
         }
 
         // Comment
-        let comment: string = '';
+        let commentMsg: string = '';
         if (typeof request.text === 'string') {
-            comment = request.text;
+            commentMsg = request.text;
         }
-        let commentCell = new Cell();
-        new CommentMessage(comment).writeTo(commentCell);
+        let commentCell = comment(commentMsg);
 
         let res = await this.#doRequest('sign', {
             network: this.network,

@@ -1,21 +1,17 @@
-import { Address, contractAddress } from "ton";
-import { WalletV4Source } from "./WalletV4Source";
+import { walletV4FromConfig } from "./walletV4FromConfig";
 
 export function extractPublicKeyAndAddress(config: {
     walletType: string,
     walletConfig: string
 }) {
-    // Extract public key and address
-    let publicKey: Buffer;
-    let restoredAddress: Address;
     if (config.walletType === 'org.ton.wallets.v4') {
-        let source = WalletV4Source.restore(config.walletConfig);
-        restoredAddress = contractAddress(source);
-        publicKey = source.publicKey;
+        let source = walletV4FromConfig(config.walletConfig);
+
+        return {
+            publicKey: source.publicKey,
+            address: source.address,
+        }
     } else {
         return null;
     }
-
-    // Public key
-    return { publicKey, address: restoredAddress };
 }

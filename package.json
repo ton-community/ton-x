@@ -1,8 +1,8 @@
 {
   "name": "ton-x",
   "version": "2.0.0",
-  "repository": "https://github.com/ton-foundation/ton-x.git",
-  "author": "Steve Korshakov <steve@korshakov.com>",
+  "repository": "https://github.com/ton-community/ton-x.git",
+  "author": "Whales Corp. <developers@whalescorp.com>",
   "license": "MIT",
   "main": "dist/index.js",
   "files": [
@@ -13,17 +13,17 @@
     "release": "yarn build && yarn publish"
   },
   "devDependencies": {
+    "@types/node": "^20.1.5",
+    "ton-core": "^0.49.1",
+    "ton-crypto": "^3.2.0",
     "typescript": "^4.6.3"
   },
   "dependencies": {
-    "@types/bn.js": "^5.1.0",
-    "axios": "^0.27.0",
-    "bn.js": "^5.2.0",
-    "fp-ts": "^2.12.0",
-    "io-ts": "^2.2.16",
-    "teslabot": "^1.5.0",
-    "ton": "9.8.0",
-    "ton-crypto": "^3.0.0"
+    "axios": "^0.27.0"
   },
-  "packageManager": "yarn@3.5.1"
+  "packageManager": "yarn@3.5.1",
+  "peerDependencies": {
+    "ton-core": ">=0.47.0",
+    "ton-crypto": ">=3.2.0"
+  }
 }

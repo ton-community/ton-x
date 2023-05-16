@@ -1,4 +1,4 @@
-import { Address, beginCell, Cell, CommentMessage, safeSignVerify } from "ton";
+import { Address, beginCell, Cell, safeSignVerify, comment } from "ton-core";
 import { extractPublicKeyAndAddress } from "../contracts/extractPublicKeyAndAddress";
 
 export function verifySignatureResponse(args: {
@@ -24,11 +24,8 @@ export function verifySignatureResponse(args: {
     let publicKey: Buffer = extracted.publicKey;
 
     // Package
-    let textCell = new Cell();
-    let payloadCell = new Cell();
-    if (typeof args.text === 'string') {
-        new CommentMessage(args.text).writeTo(textCell);
-    }
+    let textCell = args.text ? comment(args.text) : Cell.EMPTY;
+    let payloadCell = Cell.EMPTY;
     if (typeof args.payload === 'string') {
         payloadCell = Cell.fromBoc(Buffer.from(args.payload, 'base64'))[0];
     }
